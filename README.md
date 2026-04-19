@@ -60,4 +60,4 @@ The app will be available at `http://localhost:5173`.
 
 ### Version 0
 
-This is just a basic version. The version serves as a backup version incase future versions fail.
+This is just a basic version. This version serves as a backup version incase future versions fail. UI needs to be improved
