@@ -1,7 +1,5 @@
 import axios from 'axios'
-
 const api = axios.create({ baseURL: '/api' })
-
 export const getEnergySummary = () => api.get('/energy/summary')
 export const getHourlyData = (date) => api.get(`/energy/hourly?date=${date}`)
 export const getDailyData = (month) => api.get(`/energy/daily?month=${month}`)

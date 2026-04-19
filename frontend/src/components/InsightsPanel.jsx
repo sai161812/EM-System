@@ -1,109 +1,119 @@
-import { useEffect, useState } from 'react'
-import {
-  ArrowUpDown, Calendar, CalendarDays, TrendingDown, TrendingUp,
-  Zap, AlertTriangle, AlertCircle,
-} from 'lucide-react'
-import { getInsights } from '../api'
+import React, { useState, useEffect } from 'react';
+import { Loader, AlertCircle, ArrowUpDown, Calendar, CalendarDays, TrendingDown, TrendingUp, Zap, AlertTriangle, InboxIcon, Info } from 'lucide-react';
+import { getInsights } from '../api';
 
-const iconMap = {
-  VS_YESTERDAY:  ArrowUpDown,
-  VS_7DAY_AVG:   Calendar,
-  VS_30DAY_AVG:  CalendarDays,
-  WORST_DAY_WEEK: TrendingDown,
-  BEST_DAY_WEEK:  TrendingUp,
-  PEAK_HOUR_TODAY: Zap,
-  ANOMALY_SUMMARY: AlertTriangle,
-}
-
-function SkeletonRow() {
-  return (
-    <div className="flex items-center gap-4 py-3">
-      <div className="skeleton w-8 h-8 rounded-lg flex-shrink-0" />
-      <div className="flex-1 flex flex-col gap-2">
-        <div className="skeleton h-3 w-3/4" />
-      </div>
-      <div className="skeleton h-4 w-10 flex-shrink-0" />
-    </div>
-  )
-}
+const ICON_MAP = {
+  'VS_YESTERDAY': ArrowUpDown,
+  'VS_7DAY_AVG': Calendar,
+  'VS_30DAY_AVG': CalendarDays,
+  'WORST_DAY_WEEK': TrendingDown,
+  'BEST_DAY_WEEK': TrendingUp,
+  'PEAK_HOUR_TODAY': Zap,
+  'ANOMALY_SUMMARY': AlertTriangle
+};
 
 export default function InsightsPanel() {
-  const [insights, setInsights] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(null)
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function load() {
+    const fetchData = async () => {
       try {
-        const res = await getInsights()
-        setInsights(Array.isArray(res.data?.insights) ? res.data.insights : [])
+        setLoading(true);
+        setError(null);
+        const res = await getInsights();
+        setData(res.data);
       } catch (err) {
-        setError(err.message || 'Failed to load insights')
+        setError(err?.response?.data?.error || 'Failed to load data. Check that the backend is running.');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    load()
-  }, [])
+    };
+    fetchData();
+  }, []);
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col">
-        <div className="skeleton h-4 w-28 mb-5" />
-        <div className="divide-y divide-slate-100">
-          {[0, 1, 2, 3].map(i => <SkeletonRow key={i} />)}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Consumption Insights</h2>
+        <div className="flex items-center justify-center h-40">
+          <Loader className="w-5 h-5 text-slate-400 animate-spin" />
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex items-center gap-2 text-red-600 animate-fade-in">
-        <AlertCircle size={16} />
-        <span className="text-sm">{error}</span>
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Consumption Insights</h2>
+        <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="text-sm">{error}</span>
+        </div>
       </div>
-    )
+    );
   }
 
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Consumption Insights</h2>
+        <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+          <InboxIcon className="w-8 h-8 mb-2" />
+          <span className="text-sm">No insights available</span>
+        </div>
+      </div>
+    );
+  }
+
+  const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col card-hover animate-fade-in-up">
-      <h2 className="font-semibold text-slate-800 text-base mb-4">Usage Insights</h2>
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
+      <div className="flex justify-between items-baseline mb-6">
+        <h2 className="text-lg font-semibold text-slate-900">Consumption Insights</h2>
+        <span className="text-sm text-slate-500">{today}</span>
+      </div>
 
-      {insights.length === 0 && (
-        <p className="text-sm text-slate-400 animate-fade-in">No insights available</p>
-      )}
-
-      <div className="divide-y divide-slate-100">
-        {insights.map((item, i) => {
-          const Icon        = iconMap[item.type] || Zap
-          const isPositive  = typeof item.value === 'number' && item.value > 0
-          const isNegative  = typeof item.value === 'number' && item.value < 0
-          const valueColor  = isPositive ? 'text-red-600' : isNegative ? 'text-green-600' : 'text-slate-700'
+      <div className="flex flex-col">
+        {data.map((insight, idx) => {
+          const Icon = ICON_MAP[insight.type] || Info;
+          const isAnomaly = insight.type === 'ANOMALY_SUMMARY';
+          
+          let valueClass = 'text-slate-500 font-semibold text-sm';
+          let valuePrefix = '';
+          let valueSuffix = isAnomaly ? '' : '%';
+          
+          if (!isAnomaly) {
+            if (insight.value > 0) {
+              valueClass = 'text-red-600 font-semibold text-sm';
+              valuePrefix = '+';
+            } else if (insight.value < 0) {
+              valueClass = 'text-green-600 font-semibold text-sm';
+            }
+          } else {
+            valueClass = 'text-slate-800 font-semibold text-sm';
+          }
 
           return (
-            <div
-              key={i}
-              className="flex items-center gap-4 py-3 animate-slide-in-left"
-              style={{ animationDelay: `${i * 50}ms` }}
-            >
-              <div className="w-8 h-8 flex items-center justify-center bg-slate-50 rounded-lg flex-shrink-0">
-                <Icon size={15} className="text-slate-500" />
+            <div key={idx} className="flex items-center gap-4 py-4 border-b border-slate-100 last:border-0 last:pb-0">
+              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4 text-slate-600" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-700 leading-snug">{item.message || item.label || '—'}</p>
+              <div className="text-sm text-slate-700 flex-1">
+                {insight.message}
               </div>
-              {item.value !== undefined && item.value !== null && (
-                <span className={`text-sm font-medium flex-shrink-0 ${valueColor}`}>
-                  {typeof item.value === 'number'
-                    ? `${item.value > 0 ? '+' : ''}${item.value.toFixed(2)}`
-                    : item.value}
-                </span>
-              )}
+              <div className={valueClass}>
+                {insight.value === 0 && !isAnomaly ? '0%' : (
+                  <span>{valuePrefix}{isAnomaly ? insight.value : insight.value.toFixed(1)}{valueSuffix}</span>
+                )}
+              </div>
             </div>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

@@ -1,26 +1,30 @@
-import SummaryCards from '../components/SummaryCards'
-import EnergyChart from '../components/EnergyChart'
-import AnomalyFeed from '../components/AnomalyFeed'
+import React from 'react';
+import SummaryCards from '../components/SummaryCards';
+import EnergyChart from '../components/EnergyChart';
+import AnomalyFeed from '../components/AnomalyFeed';
 
 export default function Dashboard() {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
   return (
-    <div className="flex flex-col gap-7">
-
-      <div className="animate-fade-in-up">
-        <h1 className="text-xl font-semibold text-slate-800">Dashboard</h1>
-        <p className="text-sm text-slate-400 mt-1">Real-time energy monitoring overview</p>
+    <div className="p-8">
+      <div className="flex justify-between items-end">
+        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+        <div className="text-sm text-slate-500">{today}</div>
       </div>
-
-      <SummaryCards />
-
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3">
+      
+      <div className="mt-6">
+        <SummaryCards />
+      </div>
+      
+      <div className="flex gap-6 mt-6">
+        <div className="flex-[3]">
           <EnergyChart />
         </div>
-        <div className="lg:col-span-2">
+        <div className="flex-[2]">
           <AnomalyFeed />
         </div>
       </div>
     </div>
-  )
+  );
 }

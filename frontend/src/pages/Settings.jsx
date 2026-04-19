@@ -1,90 +1,79 @@
-import { useEffect, useState } from 'react'
-import { Loader, AlertCircle, IndianRupee, Zap, TrendingUp, Calendar } from 'lucide-react'
-import InsightsPanel from '../components/InsightsPanel'
-import { getCostSummary } from '../api'
-
-function CostItem({ label, value, icon: Icon }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5 text-slate-400">
-        <Icon size={13} />
-        <span className="text-xs">{label}</span>
-      </div>
-      <div className="text-xl font-semibold text-slate-800 tracking-tight">{value}</div>
-    </div>
-  )
-}
-
-function CostCard() {
-  const [data, setData]     = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError]   = useState(null)
-
-  useEffect(() => {
-    getCostSummary()
-      .then(r => setData(r.data))
-      .catch(e => setError(e.message || 'Failed to load cost summary'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const items = [
-    { label: "Today's Cost",       value: `₹${data?.today_cost?.toFixed(2) ?? '—'}`,            icon: IndianRupee },
-    { label: 'Month Cost',         value: `₹${data?.month_cost?.toFixed(2) ?? '—'}`,             icon: Calendar },
-    { label: 'Projected Monthly',  value: `₹${data?.projected_month_cost?.toFixed(2) ?? '—'}`,   icon: TrendingUp },
-    { label: 'Rate per Unit',      value: `₹${data?.rate_per_unit?.toFixed(2) ?? '—'}/kWh`,      icon: Zap },
-  ]
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-5 card-hover animate-fade-in-up"
-      style={{ animationDelay: '80ms' }}>
-      <h2 className="font-semibold text-slate-800 text-base">Cost Summary</h2>
-
-      {loading && (
-        <div className="grid grid-cols-2 gap-4">
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className="flex flex-col gap-2">
-              <div className="skeleton h-3 w-20" />
-              <div className="skeleton h-7 w-24" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-xl p-4 animate-fade-in">
-          <AlertCircle size={16} />
-          <span className="text-sm">{error}</span>
-        </div>
-      )}
-
-      {!loading && !error && (
-        <div className="grid grid-cols-2 gap-5">
-          {items.map(({ label, value, icon }, i) => (
-            <div
-              key={label}
-              className="animate-fade-in-up"
-              style={{ animationDelay: `${i * 60 + 80}ms` }}
-            >
-              <CostItem label={label} value={value} icon={icon} />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+import React, { useState, useEffect } from 'react';
+import { Loader, AlertCircle } from 'lucide-react';
+import InsightsPanel from '../components/InsightsPanel';
+import { getCostSummary } from '../api';
 
 export default function Settings() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await getCostSummary();
+        setData(res.data);
+      } catch (err) {
+        setError(err?.response?.data?.error || 'Failed to load data. Check that the backend is running.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
   return (
-    <div className="flex flex-col gap-7">
-
-      <div className="animate-fade-in-up">
-        <h1 className="text-xl font-semibold text-slate-800">Settings</h1>
-        <p className="text-sm text-slate-400 mt-1">Usage insights and cost breakdown</p>
+    <div className="p-8 h-full flex flex-col">
+      <h1 className="text-2xl font-semibold text-slate-900">Insights & Overview</h1>
+      
+      <div className="flex gap-6 mt-6">
+        <div className="flex-[3]">
+          <InsightsPanel />
+        </div>
+        
+        <div className="flex-[2]">
+          {loading ? (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">Cost Overview</h2>
+              <div className="flex items-center justify-center h-40">
+                <Loader className="w-5 h-5 text-slate-400 animate-spin" />
+              </div>
+            </div>
+          ) : error ? (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">Cost Overview</h2>
+              <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span className="text-sm">{error}</span>
+              </div>
+            </div>
+          ) : data && (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">Cost Overview</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">Today's Cost</div>
+                  <div className="text-xl font-semibold text-slate-900">&#8377;{data.today_cost.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">Month Cost</div>
+                  <div className="text-xl font-semibold text-slate-900">&#8377;{data.month_cost.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">Projected Bill</div>
+                  <div className="text-xl font-semibold text-slate-900">&#8377;{data.projected_month_cost.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">Rate per Unit</div>
+                  <div className="text-xl font-semibold text-slate-900">&#8377;{data.rate_per_unit.toFixed(2)} / kWh</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
-      <InsightsPanel />
-      <CostCard />
     </div>
-  )
+  );
 }
