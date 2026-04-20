@@ -20,7 +20,13 @@ export default function BudgetAlertHistory() {
         setLoading(false);
       }
     };
+
     fetchData();
+
+    // Re-fetch when Refresh System button fires this event
+    const handleSystemRefresh = () => fetchData();
+    window.addEventListener('refresh-system', handleSystemRefresh);
+    return () => window.removeEventListener('refresh-system', handleSystemRefresh);
   }, []);
 
   if (loading) {
@@ -62,16 +68,20 @@ export default function BudgetAlertHistory() {
   };
 
   const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
+    // Backend returns 'YYYY-MM-DD HH:MM:SS' — replace space with T for ISO 8601 compatibility
+    const normalized = dateStr.replace(' ', 'T');
+    const d = new Date(normalized);
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
+
+  if (!data) return null;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 mt-6 overflow-hidden">
       <div className="p-6 border-b border-slate-200">
         <h2 className="text-lg font-semibold text-slate-900 m-0">Alert History</h2>
       </div>
-      
+
       {data.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-40 text-slate-400">
           <InboxIcon className="w-8 h-8 mb-2" />

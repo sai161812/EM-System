@@ -27,7 +27,14 @@ export default function AnomalyFeed() {
     fetchData(true);
     intervalId = setInterval(() => fetchData(false), 30000);
 
-    return () => clearInterval(intervalId);
+    // Re-fetch when Refresh System button fires this event
+    const handleSystemRefresh = () => fetchData(false);
+    window.addEventListener('refresh-system', handleSystemRefresh);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('refresh-system', handleSystemRefresh);
+    };
   }, []);
 
   if (loading) {
@@ -71,7 +78,9 @@ export default function AnomalyFeed() {
   };
 
   const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
+    // Backend returns 'YYYY-MM-DD HH:MM:SS' — replace space with T for ISO 8601 compatibility
+    const normalized = dateStr.replace(' ', 'T');
+    const d = new Date(normalized);
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 

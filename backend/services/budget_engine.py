@@ -130,7 +130,8 @@ def evaluate_budget(date_str=None):
         'overage': overage,
         'message': message,
         'contributing_anomaly': contributing,
-        'date': date_str
+        'date': date_str,
+        'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
 def store_budget_alert(alert):

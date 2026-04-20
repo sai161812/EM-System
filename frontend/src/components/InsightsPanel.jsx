@@ -30,7 +30,13 @@ export default function InsightsPanel() {
         setLoading(false);
       }
     };
+
     fetchData();
+
+    // Re-fetch when Refresh System button fires this event
+    const handleSystemRefresh = () => fetchData();
+    window.addEventListener('refresh-system', handleSystemRefresh);
+    return () => window.removeEventListener('refresh-system', handleSystemRefresh);
   }, []);
 
   if (loading) {

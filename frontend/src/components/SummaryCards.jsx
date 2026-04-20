@@ -12,7 +12,7 @@ export default function SummaryCards() {
       try {
         setLoading(true);
         setError(null);
-        
+
         const [energyRes, costRes, anomaliesRes] = await Promise.all([
           getEnergySummary(),
           getCostSummary(),
@@ -30,7 +30,13 @@ export default function SummaryCards() {
         setLoading(false);
       }
     };
+
     fetchData();
+
+    // Re-fetch when Refresh System button fires this event
+    const handleSystemRefresh = () => fetchData();
+    window.addEventListener('refresh-system', handleSystemRefresh);
+    return () => window.removeEventListener('refresh-system', handleSystemRefresh);
   }, []);
 
   if (loading) {

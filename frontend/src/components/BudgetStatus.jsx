@@ -26,7 +26,14 @@ export default function BudgetStatus() {
     fetchData(true);
     intervalId = setInterval(() => fetchData(false), 30000);
 
-    return () => clearInterval(intervalId);
+    // Re-fetch when Refresh System button fires this event
+    const handleSystemRefresh = () => fetchData(false);
+    window.addEventListener('refresh-system', handleSystemRefresh);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('refresh-system', handleSystemRefresh);
+    };
   }, []);
 
   if (loading) {
@@ -69,7 +76,11 @@ export default function BudgetStatus() {
 
   const { stage, amount_used, daily_budget, percent_used, message, contributing_anomaly, last_updated } = data;
   const styles = getStageStyles(stage);
-  const formattedTime = new Date(last_updated).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  // Normalize backend timestamp 'YYYY-MM-DD HH:MM:SS' to ISO format for cross-browser safety
+  const normalizedTime = last_updated ? last_updated.replace(' ', 'T') : null;
+  const formattedTime = normalizedTime
+    ? new Date(normalizedTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    : '—';
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col">

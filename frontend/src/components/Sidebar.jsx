@@ -12,6 +12,8 @@ export default function Sidebar() {
       setRefreshState('loading');
       await refreshSystem();
       setRefreshState('success');
+      // Notify all components to re-fetch their data
+      window.dispatchEvent(new CustomEvent('refresh-system'));
       setTimeout(() => setRefreshState('idle'), 2000);
     } catch {
       setRefreshState('error');
