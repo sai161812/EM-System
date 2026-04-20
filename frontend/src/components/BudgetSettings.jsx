@@ -5,7 +5,7 @@ import { getBudgetSettings, getSettings, updateBudget, updateSettings } from '..
 export default function BudgetSettings() {
   const [dailyBudget, setDailyBudget] = useState('');
   const [ratePerUnit, setRatePerUnit] = useState('');
-  
+
   const [globalLoading, setGlobalLoading] = useState(true);
   const [globalError, setGlobalError] = useState(null);
 
@@ -34,20 +34,45 @@ export default function BudgetSettings() {
   }, []);
 
   const handleSave = async () => {
+    // EDGE-04: Validate inputs before sending — Number('') === 0 which would
+    // silently zero out the budget if we don't check explicitly.
+    const budgetNum = Number(dailyBudget);
+    const rateNum = Number(ratePerUnit);
+
+    if (!dailyBudget || budgetNum <= 0 || isNaN(budgetNum)) {
+      setSaveError('Daily budget must be a number greater than 0.');
+      return;
+    }
+    if (!ratePerUnit || rateNum <= 0 || isNaN(rateNum)) {
+      setSaveError('Rate per kWh must be a number greater than 0.');
+      return;
+    }
+
+    // EDGE-03: Save settings sequentially so we can report exactly which step failed
+    // rather than using Promise.all which gives no visibility into partial failures.
     try {
       setSaving(true);
       setSaveError(null);
       setSaveSuccess(false);
 
-      await Promise.all([
-        updateBudget(Number(dailyBudget)),
-        updateSettings(Number(ratePerUnit))
-      ]);
+      try {
+        await updateBudget(budgetNum);
+      } catch (err) {
+        const msg = err?.response?.data?.error || 'Failed to save daily budget.';
+        throw new Error(`Budget save failed: ${msg}`);
+      }
+
+      try {
+        await updateSettings(rateNum);
+      } catch (err) {
+        const msg = err?.response?.data?.error || 'Failed to save rate per kWh.';
+        throw new Error(`Rate save failed — budget was saved successfully: ${msg}`);
+      }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      setSaveError(err?.response?.data?.error || 'Failed to save settings.');
+      setSaveError(err.message || 'Failed to save settings.');
     } finally {
       setSaving(false);
     }
@@ -76,7 +101,7 @@ export default function BudgetSettings() {
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1">
-      <h2 className="text-lg font-semibold text-slate-900 mb-4">Budget & Rate Settings</h2>
+      <h2 className="text-lg font-semibold text-slate-900 mb-4">Budget &amp; Rate Settings</h2>
 
       <div className="flex flex-col gap-4">
         <div>
@@ -85,8 +110,10 @@ export default function BudgetSettings() {
             <IndianRupee className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
             <input
               type="number"
+              min="0.01"
+              step="any"
               value={dailyBudget}
-              onChange={(e) => setDailyBudget(e.target.value)}
+              onChange={(e) => { setDailyBudget(e.target.value); setSaveError(null); }}
               className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>
@@ -98,8 +125,10 @@ export default function BudgetSettings() {
             <Zap className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
             <input
               type="number"
+              min="0.01"
+              step="any"
               value={ratePerUnit}
-              onChange={(e) => setRatePerUnit(e.target.value)}
+              onChange={(e) => { setRatePerUnit(e.target.value); setSaveError(null); }}
               className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>

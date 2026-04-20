@@ -22,7 +22,8 @@ export default function SummaryCards() {
         setData({
           summary: energyRes.data,
           cost: costRes.data,
-          anomalies: anomaliesRes.data
+          // BUG-06: Guard against non-array responses (server error, null, etc.)
+          anomalies: Array.isArray(anomaliesRes.data) ? anomaliesRes.data : [],
         });
       } catch (err) {
         setError(err?.response?.data?.error || 'Failed to load data. Check that the backend is running.');

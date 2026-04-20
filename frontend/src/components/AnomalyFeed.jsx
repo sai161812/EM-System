@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Loader, AlertCircle, CheckCircle } from 'lucide-react';
 import { getRecentAnomalies } from '../api';
 import { Link } from 'react-router-dom';
+// LOGIC-03/04: Import shared utilities instead of duplicating them
+import { formatDate } from '../utils/formatDate';
+import { getSeverityStyles } from '../utils/severityStyles';
 
 export default function AnomalyFeed() {
   const [data, setData] = useState([]);
@@ -63,26 +66,6 @@ export default function AnomalyFeed() {
       </div>
     );
   }
-
-  const getSeverityStyles = (severity) => {
-    switch (severity) {
-      case 'HIGH':
-        return { dot: 'bg-red-600', badgeStr: 'bg-red-100 text-red-700' };
-      case 'MEDIUM':
-        return { dot: 'bg-orange-600', badgeStr: 'bg-orange-100 text-orange-700' };
-      case 'LOW':
-        return { dot: 'bg-yellow-600', badgeStr: 'bg-yellow-100 text-yellow-700' };
-      default:
-        return { dot: 'bg-slate-600', badgeStr: 'bg-slate-100 text-slate-700' };
-    }
-  };
-
-  const formatDate = (dateStr) => {
-    // Backend returns 'YYYY-MM-DD HH:MM:SS' — replace space with T for ISO 8601 compatibility
-    const normalized = dateStr.replace(' ', 'T');
-    const d = new Date(normalized);
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1">

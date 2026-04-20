@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader, AlertCircle, InboxIcon } from 'lucide-react';
 import { getAllAnomalies } from '../api';
+// LOGIC-03/04: Import shared utilities instead of duplicating them
+import { formatDate } from '../utils/formatDate';
+import { getSeverityStyles } from '../utils/severityStyles';
 
 export default function History() {
   const [data, setData] = useState([]);
@@ -44,47 +47,34 @@ export default function History() {
     return count;
   }, [filterSeverity, filterRule, filterDateFrom, filterDateTo]);
 
+  // EDGE-05: Detect invalid date range so we can show a warning
+  const dateRangeInvalid = useMemo(() => {
+    if (!filterDateFrom || !filterDateTo) return false;
+    return new Date(filterDateFrom) > new Date(filterDateTo);
+  }, [filterDateFrom, filterDateTo]);
+
   const filteredData = useMemo(() => {
+    if (dateRangeInvalid) return [];
     return data.filter(item => {
       if (filterSeverity !== 'All' && item.severity !== filterSeverity) return false;
       if (filterRule !== 'All' && item.rule_triggered !== filterRule) return false;
-      
+
       if (filterDateFrom) {
         const itemDate = new Date(item.timestamp).getTime();
         const fromDate = new Date(filterDateFrom).getTime();
         if (itemDate < fromDate) return false;
       }
-      
+
       if (filterDateTo) {
         const itemDate = new Date(item.timestamp).getTime();
         const toDate = new Date(filterDateTo);
         toDate.setHours(23, 59, 59, 999);
         if (itemDate > toDate.getTime()) return false;
       }
-      
+
       return true;
     });
-  }, [data, filterSeverity, filterRule, filterDateFrom, filterDateTo]);
-
-  const getSeverityStyles = (severity) => {
-    switch (severity) {
-      case 'HIGH':
-        return 'bg-red-100 text-red-700';
-      case 'MEDIUM':
-        return 'bg-orange-100 text-orange-700';
-      case 'LOW':
-        return 'bg-yellow-100 text-yellow-700';
-      default:
-        return 'bg-slate-100 text-slate-700';
-    }
-  };
-
-  const formatDate = (dateStr) => {
-    // Backend returns 'YYYY-MM-DD HH:MM:SS' — replace space with T for ISO 8601 compatibility
-    const normalized = dateStr.replace(' ', 'T');
-    const d = new Date(normalized);
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
+  }, [data, filterSeverity, filterRule, filterDateFrom, filterDateTo, dateRangeInvalid]);
 
   return (
     <div className="p-8">
@@ -100,8 +90,8 @@ export default function History() {
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mt-6 flex items-end gap-4 flex-wrap">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Severity</label>
-          <select 
-            value={filterSeverity} 
+          <select
+            value={filterSeverity}
             onChange={e => setFilterSeverity(e.target.value)}
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 min-w-[150px]"
           >
@@ -114,8 +104,8 @@ export default function History() {
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Rule</label>
-          <select 
-            value={filterRule} 
+          <select
+            value={filterRule}
             onChange={e => setFilterRule(e.target.value)}
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 min-w-[150px]"
           >
@@ -130,31 +120,39 @@ export default function History() {
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Date From</label>
-          <input 
-            type="date" 
+          <input
+            type="date"
             value={filterDateFrom}
             onChange={e => setFilterDateFrom(e.target.value)}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className={`w-full border rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 ${dateRangeInvalid ? 'border-red-400' : 'border-slate-200'}`}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Date To</label>
-          <input 
-            type="date" 
+          <input
+            type="date"
             value={filterDateTo}
             onChange={e => setFilterDateTo(e.target.value)}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className={`w-full border rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 ${dateRangeInvalid ? 'border-red-400' : 'border-slate-200'}`}
           />
         </div>
 
-        <button 
+        <button
           onClick={clearFilters}
           className="border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors h-[38px] ml-auto lg:ml-0"
         >
           Clear Filters
         </button>
       </div>
+
+      {/* EDGE-05: Warn when date range is inverted */}
+      {dateRangeInvalid && (
+        <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mt-3 text-sm">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          "Date From" is later than "Date To" — no results will match. Please fix the date range.
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 mt-6 overflow-hidden">
         {loading ? (
@@ -191,34 +189,42 @@ export default function History() {
                       <td colSpan="5" className="p-0 border-0">
                         <div className="flex flex-col items-center justify-center h-40 text-slate-400">
                           <InboxIcon className="w-8 h-8 mb-2" />
-                          <span className="text-sm">No anomalies match the selected filters</span>
+                          <span className="text-sm">
+                            {dateRangeInvalid
+                              ? 'Fix the date range to see results'
+                              : 'No anomalies match the selected filters'}
+                          </span>
                         </div>
                       </td>
                     </tr>
                   ) : (
-                    filteredData.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
-                          {formatDate(item.timestamp)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100">
-                          <span className="font-mono text-xs">{item.rule_triggered}</span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
-                          {item.consumption_kwh.toFixed(2)} kWh
-                        </td>
-                        <td className="px-4 py-3 text-sm border-b border-slate-100 whitespace-nowrap">
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getSeverityStyles(item.severity)}`}>
-                            {item.severity}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100">
-                          <div className="max-w-xs truncate cursor-help" title={item.explanation}>
-                            {item.explanation}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                    filteredData.map((item, idx) => {
+                      const styles = getSeverityStyles(item.severity);
+                      return (
+                        <tr key={item.id || idx} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
+                            {formatDate(item.timestamp)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100">
+                            <span className="font-mono text-xs">{item.rule_triggered}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
+                            {/* BUG-07: Guard null consumption_kwh */}
+                            {(item.consumption_kwh ?? 0).toFixed(2)} kWh
+                          </td>
+                          <td className="px-4 py-3 text-sm border-b border-slate-100 whitespace-nowrap">
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles.badge}`}>
+                              {item.severity}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100">
+                            <div className="max-w-xs truncate cursor-help" title={item.explanation}>
+                              {item.explanation}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

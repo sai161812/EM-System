@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Loader, AlertCircle, InboxIcon } from 'lucide-react';
 import { getBudgetAlertHistory } from '../api';
+// LOGIC-03/05: Import shared utilities instead of duplicating them
+import { formatDate } from '../utils/formatDate';
+import { getStageStyles } from '../utils/stageStyles';
 
 export default function BudgetAlertHistory() {
   const [data, setData] = useState(null);
@@ -52,28 +55,6 @@ export default function BudgetAlertHistory() {
     );
   }
 
-  const getStageStyles = (stage) => {
-    switch (stage) {
-      case 0:
-        return { badge: 'bg-green-100 text-green-700', text: 'Within Budget' };
-      case 1:
-        return { badge: 'bg-yellow-100 text-yellow-700', text: 'Warning' };
-      case 2:
-        return { badge: 'bg-orange-100 text-orange-700', text: 'Critical' };
-      case 3:
-        return { badge: 'bg-red-100 text-red-700', text: 'Budget Exceeded' };
-      default:
-        return { badge: 'bg-slate-100 text-slate-700', text: 'Unknown' };
-    }
-  };
-
-  const formatDate = (dateStr) => {
-    // Backend returns 'YYYY-MM-DD HH:MM:SS' — replace space with T for ISO 8601 compatibility
-    const normalized = dateStr.replace(' ', 'T');
-    const d = new Date(normalized);
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
-
   if (!data) return null;
 
   return (
@@ -97,6 +78,7 @@ export default function BudgetAlertHistory() {
                 <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Amount Used</th>
                 <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Daily Budget</th>
                 <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Overage</th>
+                <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Severity</th>
                 <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Message</th>
               </tr>
             </thead>
@@ -114,14 +96,24 @@ export default function BudgetAlertHistory() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
-                      &#8377;{alert.amount_used.toFixed(2)}
+                      {/* BUG-08: Guard null amount_used */}
+                      &#8377;{(alert.amount_used ?? 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
-                      &#8377;{alert.daily_budget.toFixed(2)}
+                      {/* BUG-08: Guard null daily_budget */}
+                      &#8377;{(alert.daily_budget ?? 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-sm border-b border-slate-100 whitespace-nowrap">
                       {alert.overage ? (
                         <span className="text-red-600">&#8377;{alert.overage.toFixed(2)}</span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    {/* CONTRACT-06: Show the severity field from backend */}
+                    <td className="px-4 py-3 text-sm border-b border-slate-100 whitespace-nowrap">
+                      {alert.severity ? (
+                        <span className="font-mono text-xs text-slate-600">{alert.severity}</span>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}

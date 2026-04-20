@@ -20,11 +20,17 @@ def get_budget_settings():
 
 @budget_bp.route('/settings', methods=['POST'])
 def update_budget():
-    data = request.get_json()
+    data = request.get_json() or {}
     if 'daily_budget' not in data:
         return jsonify({'error': 'daily_budget required'}), 400
-    set_daily_budget(float(data['daily_budget']))
-    return jsonify({'message': 'Budget updated', 'daily_budget': float(data['daily_budget'])})
+    try:
+        amount = float(data['daily_budget'])
+    except (ValueError, TypeError):
+        return jsonify({'error': 'daily_budget must be a number'}), 400
+    if amount <= 0:
+        return jsonify({'error': 'daily_budget must be positive'}), 400
+    set_daily_budget(amount)
+    return jsonify({'message': 'Budget updated', 'daily_budget': amount})
 
 @budget_bp.route('/alerts/history', methods=['GET'])
 def alerts_history():

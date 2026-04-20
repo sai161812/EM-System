@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Loader, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { getBudgetStatus } from '../api';
+// LOGIC-05: Import shared utility instead of duplicating it
+import { getStageStyles } from '../utils/stageStyles';
 
 export default function BudgetStatus() {
   const [data, setData] = useState(null);
@@ -59,22 +61,17 @@ export default function BudgetStatus() {
 
   if (!data) return null;
 
-  const getStageStyles = (stage) => {
-    switch (stage) {
-      case 0:
-        return { badge: 'bg-green-100 text-green-700', text: 'Within Budget', bar: 'bg-green-600', alert: 'bg-green-50 border-green-200 text-green-700' };
-      case 1:
-        return { badge: 'bg-yellow-100 text-yellow-700', text: 'Warning', bar: 'bg-yellow-600', alert: 'bg-yellow-50 border-yellow-200 text-yellow-700' };
-      case 2:
-        return { badge: 'bg-orange-100 text-orange-700', text: 'Critical', bar: 'bg-orange-600', alert: 'bg-orange-50 border-orange-200 text-orange-700' };
-      case 3:
-        return { badge: 'bg-red-100 text-red-700', text: 'Budget Exceeded', bar: 'bg-red-600', alert: 'bg-red-50 border-red-200 text-red-700' };
-      default:
-        return { badge: 'bg-slate-100 text-slate-700', text: 'Unknown', bar: 'bg-slate-600', alert: 'bg-slate-50 border-slate-200 text-slate-700' };
-    }
-  };
+  // BUG-09: Provide safe defaults so .toFixed() never crashes on null fields
+  const {
+    stage = 0,
+    amount_used = 0,
+    daily_budget = 0,
+    percent_used = 0,
+    message,
+    contributing_anomaly,
+    last_updated,
+  } = data;
 
-  const { stage, amount_used, daily_budget, percent_used, message, contributing_anomaly, last_updated } = data;
   const styles = getStageStyles(stage);
   // Normalize backend timestamp 'YYYY-MM-DD HH:MM:SS' to ISO format for cross-browser safety
   const normalizedTime = last_updated ? last_updated.replace(' ', 'T') : null;

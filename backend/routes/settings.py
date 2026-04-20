@@ -4,6 +4,7 @@ from services.cost_estimator import (
     get_rate, get_daily_cost, get_monthly_cost, project_monthly_cost
 )
 from datetime import datetime
+import re
 
 settings_bp = Blueprint('settings', __name__)
 
@@ -14,10 +15,15 @@ def get_settings():
 
 @settings_bp.route('/settings', methods=['POST'])
 def update_settings():
-    data = request.get_json()
+    data = request.get_json() or {}
     if 'rate_per_unit' not in data:
         return jsonify({'error': 'rate_per_unit required'}), 400
-    rate = float(data['rate_per_unit'])
+    try:
+        rate = float(data['rate_per_unit'])
+    except (ValueError, TypeError):
+        return jsonify({'error': 'rate_per_unit must be a number'}), 400
+    if rate <= 0:
+        return jsonify({'error': 'rate_per_unit must be positive'}), 400
     conn = get_db()
     conn.execute(
         "UPDATE settings SET value = ? WHERE key = 'rate_per_unit'",
@@ -30,7 +36,10 @@ def update_settings():
 @settings_bp.route('/cost/summary', methods=['GET'])
 def cost_summary():
     today = datetime.now().strftime('%Y-%m-%d')
-    month = datetime.now().strftime('%Y-%m')
+    month = request.args.get('month', datetime.now().strftime('%Y-%m'))
+    # EDGE-09: Reject malformed month values before passing to calendar functions
+    if not re.match(r'^\d{4}-\d{2}$', month):
+        return jsonify({'error': 'month must be in YYYY-MM format'}), 400
     return jsonify({
         'today_cost': get_daily_cost(today),
         'month_cost': get_monthly_cost(month),

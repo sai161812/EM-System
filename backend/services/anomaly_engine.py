@@ -8,9 +8,8 @@ from models import get_db
 
 def run_detection():
     conn = get_db()
-    conn.execute("DELETE FROM anomalies")
-    conn.commit()
 
+    # --- Read all energy readings first (no writes yet) ---
     rows = conn.execute(
         "SELECT id, timestamp, consumption_kwh FROM energy_readings ORDER BY timestamp"
     ).fetchall()
@@ -24,8 +23,6 @@ def run_detection():
         }
         for r in rows
     ]
-
-    anomalies = []
 
     # Build hourly average baseline (per hour-of-day)
     hour_buckets = {h: [] for h in range(24)}
@@ -48,6 +45,8 @@ def run_detection():
             weekend_buckets[r['dt'].hour].append(r['kwh'])
     weekend_avg = {h: (sum(v)/len(v) if v else 0) for h, v in weekend_buckets.items()}
 
+    # --- Run detection entirely in memory; no DB writes yet ---
+    anomalies = []
     i = 0
     while i < len(readings):
         r = readings[i]
@@ -124,13 +123,22 @@ def run_detection():
 
         i += 1
 
-    conn.executemany('''
-        INSERT INTO anomalies (timestamp, rule_triggered, consumption_kwh, severity, explanation)
-        VALUES (:timestamp, :rule_triggered, :consumption_kwh, :severity, :explanation)
-    ''', anomalies)
-    conn.commit()
-    conn.close()
-    print(f"✅ Detected and stored {len(anomalies)} anomalies.")
+    # --- Atomic write: DELETE old rows + INSERT new rows in one transaction ---
+    # If executemany raises, rollback restores the previous anomalies intact.
+    try:
+        conn.execute("BEGIN")
+        conn.execute("DELETE FROM anomalies")
+        conn.executemany('''
+            INSERT INTO anomalies (timestamp, rule_triggered, consumption_kwh, severity, explanation)
+            VALUES (:timestamp, :rule_triggered, :consumption_kwh, :severity, :explanation)
+        ''', anomalies)
+        conn.execute("COMMIT")
+        print(f"✅ Detected and stored {len(anomalies)} anomalies.")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     run_detection()

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceDot } from 'recharts';
 import { Loader, AlertCircle } from 'lucide-react';
 import { getHourlyData, getDailyData, getAllAnomalies } from '../api';
@@ -11,6 +12,11 @@ export default function EnergyChart() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // EDGE-02: Cancel in-flight requests when activeTab changes to prevent
+    // stale-tab data from overwriting results on rapid tab switching.
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -96,6 +102,8 @@ export default function EnergyChart() {
         setData(chartData);
         setAnomalies(anomalyData);
       } catch (err) {
+        // EDGE-02: If the request was aborted (tab switch / unmount), ignore it silently
+        if (axios.isCancel(err) || err?.code === 'ERR_CANCELED') return;
         setError(err?.response?.data?.error || 'Failed to load chart data.');
       } finally {
         setLoading(false);
@@ -107,7 +115,10 @@ export default function EnergyChart() {
     // Re-fetch when Refresh System button emits this event
     const handleRefresh = () => fetchData();
     window.addEventListener('refresh-system', handleRefresh);
-    return () => window.removeEventListener('refresh-system', handleRefresh);
+    return () => {
+      controller.abort();
+      window.removeEventListener('refresh-system', handleRefresh);
+    };
   }, [activeTab]);
 
   return (
