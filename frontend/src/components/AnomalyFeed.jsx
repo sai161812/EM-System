@@ -98,7 +98,7 @@ export default function AnomalyFeed() {
                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${styles.dot}`}></div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-mono text-xs text-slate-500">{anomaly.rule}</span>
+                    <span className="font-mono text-xs text-slate-500">{anomaly.rule_triggered}</span>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles.badgeStr}`}>
                       {anomaly.severity}
                     </span>

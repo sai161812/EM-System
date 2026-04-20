@@ -31,15 +31,25 @@ export default function EnergyChart() {
           
           chartData = hourlyRes.data.map(d => ({
             ...d,
-            hourLabel: new Date(d.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
+            hourLabel: (() => {
+              const hour = parseInt(d.timestamp.split(' ')[1].split(':')[0]);
+              const ampm = hour >= 12 ? 'PM' : 'AM';
+              const display = hour % 12 || 12;
+              return `${display} ${ampm}`;
+            })()
           }));
 
           const todayAnomalies = anomalyRes.data.filter(a => a.timestamp.startsWith(apiDate));
           anomalyData = todayAnomalies.map(a => {
             const dateObj = new Date(a.timestamp);
             return {
-              x: dateObj.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }),
-              y: a.kwh,
+              x: (() => {
+                const hour = parseInt(a.timestamp.split(' ')[1].split(':')[0]);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const display = hour % 12 || 12;
+                return `${display} ${ampm}`;
+              })(),
+              y: a.consumption_kwh,
               timestamp: a.timestamp
             };
           });
@@ -51,7 +61,7 @@ export default function EnergyChart() {
           currentWeekMonday.setDate(now.getDate() - currentDay + 1);
           
           chartData = res.data.filter(d => {
-            const dataDate = new Date(d.date);
+            const dataDate = new Date(d.date+ 'T00:00:00');
             return dataDate >= currentWeekMonday && dataDate <= now;
           }).map(d => ({
             ...d,
@@ -120,7 +130,7 @@ export default function EnergyChart() {
                 />
                 <Line 
                   type="monotone" 
-                  dataKey="kwh" 
+                  dataKey="consumption_kwh"
                   stroke="#1e293b" 
                   strokeWidth={2} 
                   dot={false} 
@@ -141,7 +151,7 @@ export default function EnergyChart() {
                   cursor={{ fill: '#f8fafc' }}
                 />
                 <Bar 
-                  dataKey="kwh" 
+                  dataKey="total_kwh"
                   fill="#1e293b" 
                   radius={[4, 4, 0, 0]} 
                   maxBarSize={40}

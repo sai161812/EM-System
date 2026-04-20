@@ -56,7 +56,7 @@ export default function InsightsPanel() {
     );
   }
 
-  if (!data || data.length === 0) {
+  if (!data || !data.insights || data.insights.length === 0) {
     return (
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">Consumption Insights</h2>
@@ -78,7 +78,7 @@ export default function InsightsPanel() {
       </div>
 
       <div className="flex flex-col">
-        {data.map((insight, idx) => {
+        {data.insights.map((insight, idx) => {
           const Icon = ICON_MAP[insight.type] || Info;
           const isAnomaly = insight.type === 'ANOMALY_SUMMARY';
           
