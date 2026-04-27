@@ -93,7 +93,7 @@ EM-System-main/
     ├── vite.config.js
     ├── src/
     │   ├── App.jsx
-    │   ├── api/index.js        # Axios client and all API calls
+    │   ├── api/index.js       
     │   ├── components/
     │   │   ├── AnomalyFeed.jsx
     │   │   ├── BudgetAlertHistory.jsx
