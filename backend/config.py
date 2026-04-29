@@ -4,7 +4,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_PATH = os.path.join(BASE_DIR, 'database.db')
 DEFAULT_RATE_PER_UNIT = 8.0
 
-# Load .env manually (no external dependency needed)
 _env_path = os.path.join(BASE_DIR, '.env')
 if os.path.exists(_env_path):
     with open(_env_path) as f:
