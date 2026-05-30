@@ -1,92 +1,109 @@
-import { useEffect, useState } from 'react'
-import { Zap, IndianRupee, TrendingUp, AlertTriangle, AlertCircle } from 'lucide-react'
-import { getEnergySummary, getCostSummary, getRecentAnomalies } from '../api'
-
-function StatCard({ icon: Icon, label, value, iconColor, valueColor, index = 0 }) {
-  return (
-    <div
-      className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-3
-                 card-hover animate-fade-in-up"
-      style={{ animationDelay: `${index * 70}ms` }}
-    >
-      <div className="flex items-center gap-2">
-        <Icon size={16} className={iconColor || 'text-slate-400'} />
-        <span className="text-sm text-slate-400">{label}</span>
-      </div>
-      <div className={`text-2xl font-semibold tracking-tight ${valueColor || 'text-slate-800'}`}>
-        {value}
-      </div>
-    </div>
-  )
-}
-
-function SkeletonCard() {
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-3">
-      <div className="skeleton h-3 w-28" />
-      <div className="skeleton h-7 w-20" />
-    </div>
-  )
-}
+import React, { useState, useEffect } from 'react';
+import { Zap, IndianRupee, TrendingUp, AlertTriangle, Loader, AlertCircle } from 'lucide-react';
+import { getEnergySummary, getCostSummary, getRecentAnomalies } from '../api';
 
 export default function SummaryCards() {
-  const [energy, setEnergy]     = useState(null)
-  const [cost, setCost]         = useState(null)
-  const [anomalies, setAnomalies] = useState(null)
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(null)
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function load() {
+    const fetchData = async () => {
       try {
-        const [e, c, a] = await Promise.all([
+        setLoading(true);
+        setError(null);
+        
+        const [energyRes, costRes, anomaliesRes] = await Promise.all([
           getEnergySummary(),
           getCostSummary(),
-          getRecentAnomalies(100),
-        ])
-        setEnergy(e.data)
-        setCost(c.data)
-        setAnomalies(a.data)
+          getRecentAnomalies(100)
+        ]);
+
+        setData({
+          summary: energyRes.data,
+          cost: costRes.data,
+          anomalies: anomaliesRes.data
+        });
       } catch (err) {
-        setError(err.message || 'Failed to load summary')
+        setError(err?.response?.data?.error || 'Failed to load data. Check that the backend is running.');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    load()
-  }, [])
+    };
+    fetchData();
+  }, []);
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}
+      <div className="flex items-center justify-center h-40">
+        <Loader className="w-5 h-5 text-slate-400 animate-spin" />
       </div>
-    )
+    );
   }
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-xl p-4 animate-fade-in">
-        <AlertCircle size={16} />
+      <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+        <AlertCircle className="w-4 h-4 shrink-0" />
         <span className="text-sm">{error}</span>
       </div>
-    )
+    );
   }
 
-  const anomalyCount = Array.isArray(anomalies) ? anomalies.length : 0
+  if (!data) return null;
+
+  const { summary, cost, anomalies } = data;
+  const anomalyCount = anomalies.length;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard index={0} icon={Zap}           label="Total Consumption"    iconColor="text-slate-500"
-        value={`${energy?.total_kwh?.toFixed(2) ?? '—'} kWh`} />
-      <StatCard index={1} icon={IndianRupee}   label="Today's Cost"         iconColor="text-slate-500"
-        value={`₹${cost?.today_cost?.toFixed(2) ?? '—'}`} />
-      <StatCard index={2} icon={TrendingUp}    label="Projected Monthly"    iconColor="text-slate-500"
-        value={`₹${cost?.projected_month_cost?.toFixed(2) ?? '—'}`} />
-      <StatCard index={3} icon={AlertTriangle} label="Active Anomalies"
-        iconColor={anomalyCount > 0 ? 'text-red-500' : 'text-slate-400'}
-        valueColor={anomalyCount > 0 ? 'text-red-600' : 'text-slate-800'}
-        value={anomalyCount} />
+    <div className="grid grid-cols-4 gap-6">
+      {/* Card 1 */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-start">
+          <span className="text-sm text-slate-500">Total Consumption</span>
+          <Zap className="w-[18px] h-[18px] text-slate-400" />
+        </div>
+        <div className="text-2xl font-semibold text-slate-900 mt-2">
+          {summary.total_kwh.toFixed(2)} kWh
+        </div>
+        <div className="text-xs text-slate-400 mt-1">Last 30 days</div>
+      </div>
+
+      {/* Card 2 */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-start">
+          <span className="text-sm text-slate-500">Today's Cost</span>
+          <IndianRupee className="w-[18px] h-[18px] text-slate-400" />
+        </div>
+        <div className="text-2xl font-semibold text-slate-900 mt-2">
+          &#8377;{cost.today_cost.toFixed(2)}
+        </div>
+        <div className="text-xs text-slate-400 mt-1">Based on current rate</div>
+      </div>
+
+      {/* Card 3 */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-start">
+          <span className="text-sm text-slate-500">Projected Bill</span>
+          <TrendingUp className="w-[18px] h-[18px] text-slate-400" />
+        </div>
+        <div className="text-2xl font-semibold text-slate-900 mt-2">
+          &#8377;{cost.projected_month_cost.toFixed(2)}
+        </div>
+        <div className="text-xs text-slate-400 mt-1">End of month estimate</div>
+      </div>
+
+      {/* Card 4 */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-start">
+          <span className="text-sm text-slate-500">Active Anomalies</span>
+          <AlertTriangle className={`w-[18px] h-[18px] ${anomalyCount > 0 ? 'text-red-400' : 'text-green-400'}`} />
+        </div>
+        <div className={`text-2xl font-semibold mt-2 ${anomalyCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          {anomalyCount}
+        </div>
+        <div className="text-xs text-slate-400 mt-1">Detected this month</div>
+      </div>
     </div>
-  )
+  );
 }

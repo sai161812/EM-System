@@ -1,107 +1,133 @@
-import { useEffect, useState } from 'react'
-import { AlertCircle } from 'lucide-react'
-import { getBudgetAlertHistory } from '../api'
-
-const stageConfig = {
-  0: { label: 'Safe',     color: 'text-green-700',  bg: 'bg-green-100'  },
-  1: { label: 'Warning',  color: 'text-amber-700',  bg: 'bg-amber-100'  },
-  2: { label: 'Critical', color: 'text-orange-700', bg: 'bg-orange-100' },
-  3: { label: 'Breached', color: 'text-red-700',    bg: 'bg-red-100'    },
-}
-
-function formatTs(ts) {
-  if (!ts) return '—'
-  try {
-    return new Date(ts).toLocaleString('en-IN', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
-  } catch { return ts }
-}
+import React, { useState, useEffect } from 'react';
+import { Loader, AlertCircle, InboxIcon } from 'lucide-react';
+import { getBudgetAlertHistory } from '../api';
 
 export default function BudgetAlertHistory() {
-  const [alerts, setAlerts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState(null)
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function load() {
+    const fetchData = async () => {
       try {
-        const res = await getBudgetAlertHistory()
-        setAlerts(Array.isArray(res.data) ? res.data : [])
+        setLoading(true);
+        setError(null);
+        const res = await getBudgetAlertHistory();
+        setData(res.data);
       } catch (err) {
-        setError(err.message || 'Failed to load alert history')
+        setError(err?.response?.data?.error || 'Failed to load data. Check that the backend is running.');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    load()
-  }, [])
+    };
+    fetchData();
+  }, []);
 
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-4 card-hover animate-fade-in-up"
-      style={{ animationDelay: '100ms' }}>
-
-      <h2 className="font-semibold text-slate-800 text-base">Budget Alert History</h2>
-
-      {loading && (
-        <div className="flex flex-col gap-3">
-          <div className="skeleton h-8 w-full rounded" />
-          {[0, 1, 2].map(i => (
-            <div key={i} className="skeleton h-10 w-full rounded" />
-          ))}
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mt-6">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Alert History</h2>
+        <div className="flex items-center justify-center h-40">
+          <Loader className="w-5 h-5 text-slate-400 animate-spin" />
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {error && (
-        <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-xl p-4 animate-fade-in">
-          <AlertCircle size={16} />
+  if (error) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mt-6">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Alert History</h2>
+        <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+          <AlertCircle className="w-4 h-4 shrink-0" />
           <span className="text-sm">{error}</span>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {!loading && !error && alerts.length === 0 && (
-        <p className="text-sm text-slate-400 py-4 animate-fade-in">No budget alerts recorded yet</p>
-      )}
+  const getStageStyles = (stage) => {
+    switch (stage) {
+      case 0:
+        return { badge: 'bg-green-100 text-green-700', text: 'Within Budget' };
+      case 1:
+        return { badge: 'bg-yellow-100 text-yellow-700', text: 'Warning' };
+      case 2:
+        return { badge: 'bg-orange-100 text-orange-700', text: 'Critical' };
+      case 3:
+        return { badge: 'bg-red-100 text-red-700', text: 'Budget Exceeded' };
+      default:
+        return { badge: 'bg-slate-100 text-slate-700', text: 'Unknown' };
+    }
+  };
 
-      {!loading && !error && alerts.length > 0 && (
-        <div className="overflow-x-auto animate-fade-in">
-          <table className="w-full text-sm">
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 mt-6 overflow-hidden">
+      <div className="p-6 border-b border-slate-200">
+        <h2 className="text-lg font-semibold text-slate-900 m-0">Alert History</h2>
+      </div>
+      
+      {data.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+          <InboxIcon className="w-8 h-8 mb-2" />
+          <span className="text-sm">No budget alerts have been recorded yet</span>
+        </div>
+      ) : (
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="text-left border-b border-slate-200">
-                {['Timestamp', 'Stage', 'Amount Used', 'Budget', 'Overage', 'Message'].map(h => (
-                  <th key={h} className="pb-3 text-xs font-medium text-slate-400 pr-4">{h}</th>
-                ))}
+              <tr>
+                <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Timestamp</th>
+                <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Stage</th>
+                <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Amount Used</th>
+                <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Daily Budget</th>
+                <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Overage</th>
+                <th className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 bg-slate-50 border-b border-slate-200">Message</th>
               </tr>
             </thead>
             <tbody>
-              {alerts.map((a, i) => {
-                const cfg = stageConfig[a.stage] || stageConfig[0]
+              {data.map((alert, idx) => {
+                const styles = getStageStyles(alert.stage);
                 return (
-                  <tr
-                    key={i}
-                    className="border-b border-slate-100 transition-colors duration-150 hover:bg-slate-50"
-                    style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-                  >
-                    <td className="py-3 pr-4 text-slate-600 whitespace-nowrap">{formatTs(a.timestamp)}</td>
-                    <td className="py-3 pr-4">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cfg.bg} ${cfg.color}`}>
-                        {cfg.label}
+                  <tr key={idx} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
+                      {formatDate(alert.timestamp)}
+                    </td>
+                    <td className="px-4 py-3 text-sm border-b border-slate-100 whitespace-nowrap">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles.badge}`}>
+                        {styles.text}
                       </span>
                     </td>
-                    <td className="py-3 pr-4 text-slate-700">₹{a.amount_used?.toFixed(2) ?? '—'}</td>
-                    <td className="py-3 pr-4 text-slate-700">₹{a.daily_budget?.toFixed(2) ?? '—'}</td>
-                    <td className="py-3 pr-4 text-slate-700">
-                      {a.overage != null ? `₹${a.overage.toFixed(2)}` : '—'}
+                    <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
+                      &#8377;{alert.amount_used.toFixed(2)}
                     </td>
-                    <td className="py-3 text-slate-500 text-xs max-w-xs truncate">{a.message || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
+                      &#8377;{alert.daily_budget.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-sm border-b border-slate-100 whitespace-nowrap">
+                      {alert.overage ? (
+                        <span className="text-red-600">&#8377;{alert.overage.toFixed(2)}</span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100">
+                      <div className="max-w-xs truncate" title={alert.message}>
+                        {alert.message}
+                      </div>
+                    </td>
                   </tr>
-                )
+                );
               })}
             </tbody>
           </table>
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,124 +1,118 @@
-import { useEffect, useState } from 'react'
-import { Loader, AlertCircle, CheckCircle } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { getRecentAnomalies } from '../api'
-
-const severityStyle = {
-  LOW:    'bg-amber-100 text-amber-700',
-  MEDIUM: 'bg-orange-100 text-orange-700',
-  HIGH:   'bg-red-100 text-red-700',
-}
-
-function SeverityBadge({ severity }) {
-  return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium
-      ${severityStyle[severity] || 'bg-slate-100 text-slate-600'}`}>
-      {severity}
-    </span>
-  )
-}
-
-function formatTs(ts) {
-  if (!ts) return '—'
-  try {
-    return new Date(ts).toLocaleString('en-IN', {
-      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-    })
-  } catch { return ts }
-}
+import React, { useState, useEffect } from 'react';
+import { Loader, AlertCircle, CheckCircle } from 'lucide-react';
+import { getRecentAnomalies } from '../api';
+import { Link } from 'react-router-dom';
 
 export default function AnomalyFeed() {
-  const [anomalies, setAnomalies] = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState(null)
-
-  async function load() {
-    try {
-      const res = await getRecentAnomalies(5)
-      setAnomalies(Array.isArray(res.data) ? res.data : [])
-      setError(null)
-    } catch (err) {
-      setError(err.message || 'Failed to load anomalies')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    load()
-    const id = setInterval(load, 30000)
-    return () => clearInterval(id)
-  }, [])
+    let intervalId;
 
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-4 card-hover animate-fade-in-up"
-      style={{ animationDelay: '120ms' }}>
+    const fetchData = async (isInitial = false) => {
+      try {
+        if (isInitial) setLoading(true);
+        setError(null);
+        const res = await getRecentAnomalies(5);
+        setData(res.data);
+      } catch (err) {
+        setError(err?.response?.data?.error || 'Failed to load data. Check that the backend is running.');
+      } finally {
+        if (isInitial) setLoading(false);
+      }
+    };
 
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-slate-800 text-base">Recent Anomalies</h2>
-        {!loading && (
-          <span className="text-xs text-slate-400 animate-fade-in">Live · 30s</span>
-        )}
-      </div>
+    fetchData(true);
+    intervalId = setInterval(() => fetchData(false), 30000);
 
-      {loading && (
-        <div className="flex flex-col gap-3 py-2">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="flex flex-col gap-2 py-2">
-              <div className="skeleton h-3 w-24" />
-              <div className="skeleton h-3 w-40" />
-            </div>
-          ))}
+    return () => clearInterval(intervalId);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">Recent Anomalies</h2>
         </div>
-      )}
+        <div className="flex items-center justify-center h-40">
+          <Loader className="w-5 h-5 text-slate-400 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
-      {error && (
-        <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-xl p-4 animate-fade-in">
-          <AlertCircle size={16} />
+  if (error) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">Recent Anomalies</h2>
+        </div>
+        <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+          <AlertCircle className="w-4 h-4 shrink-0" />
           <span className="text-sm">{error}</span>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {!loading && !error && anomalies.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-2 h-40 text-slate-500 animate-scale-in">
-          <CheckCircle size={24} className="text-green-500" />
+  const getSeverityStyles = (severity) => {
+    switch (severity) {
+      case 'HIGH':
+        return { dot: 'bg-red-600', badgeStr: 'bg-red-100 text-red-700' };
+      case 'MEDIUM':
+        return { dot: 'bg-orange-600', badgeStr: 'bg-orange-100 text-orange-700' };
+      case 'LOW':
+        return { dot: 'bg-yellow-600', badgeStr: 'bg-yellow-100 text-yellow-700' };
+      default:
+        return { dot: 'bg-slate-600', badgeStr: 'bg-slate-100 text-slate-700' };
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold text-slate-900">Recent Anomalies</h2>
+        <Link to="/history" className="text-sm text-slate-500 hover:text-slate-800">
+          View All
+        </Link>
+      </div>
+
+      {data.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+          <CheckCircle className="w-8 h-8 mb-2 text-green-500" />
           <span className="text-sm">No anomalies detected</span>
         </div>
-      )}
-
-      {!loading && !error && anomalies.length > 0 && (
-        <div className="flex flex-col divide-y divide-slate-100">
-          {anomalies.map((a, i) => (
-            <div
-              key={i}
-              className="py-3 flex flex-col gap-1.5 animate-fade-in-up"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-slate-400">{formatTs(a.timestamp)}</span>
-                <SeverityBadge severity={a.severity} />
+      ) : (
+        <div className="flex flex-col">
+          {data.map((anomaly, idx) => {
+            const styles = getSeverityStyles(anomaly.severity);
+            return (
+              <div key={anomaly.id || idx} className="flex items-start gap-3 py-3 border-b border-slate-100 last:border-0">
+                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${styles.dot}`}></div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-mono text-xs text-slate-500">{anomaly.rule}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles.badgeStr}`}>
+                      {anomaly.severity}
+                    </span>
+                  </div>
+                  <div className="text-sm text-slate-700">{anomaly.explanation}</div>
+                </div>
+                <div className="text-xs text-slate-400 whitespace-nowrap">
+                  {formatDate(anomaly.timestamp)}
+                </div>
               </div>
-              <span className="font-mono text-xs text-slate-700 bg-slate-50 px-2 py-0.5 rounded w-fit">
-                {a.rule_triggered || '—'}
-              </span>
-              {a.explanation && (
-                <p className="text-xs text-slate-500 leading-relaxed">{a.explanation}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!loading && !error && (
-        <div className="pt-2 border-t border-slate-100">
-          <Link
-            to="/history"
-            className="text-xs text-slate-500 hover:text-slate-800 transition-colors duration-150"
-          >
-            View all anomalies →
-          </Link>
+            );
+          })}
         </div>
       )}
     </div>
-  )
+  );
 }

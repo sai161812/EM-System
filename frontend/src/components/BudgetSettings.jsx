@@ -1,124 +1,141 @@
-import { useEffect, useState } from 'react'
-import { IndianRupee, Zap, Loader, AlertCircle, Check } from 'lucide-react'
-import { getBudgetSettings, getSettings, updateBudget, updateSettings } from '../api'
+import React, { useState, useEffect } from 'react';
+import { IndianRupee, Zap, Loader, Check, AlertCircle } from 'lucide-react';
+import { getBudgetSettings, getSettings, updateBudget, updateSettings } from '../api';
 
 export default function BudgetSettings() {
-  const [budget, setBudget] = useState('')
-  const [rate, setRate]     = useState('')
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState(false)
-  const [error, setError]     = useState(null)
-  const [saved, setSaved]     = useState(false)
+  const [dailyBudget, setDailyBudget] = useState('');
+  const [ratePerUnit, setRatePerUnit] = useState('');
+  
+  const [globalLoading, setGlobalLoading] = useState(true);
+  const [globalError, setGlobalError] = useState(null);
+
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
-    async function load() {
+    const fetchData = async () => {
       try {
-        const [bRes, sRes] = await Promise.all([getBudgetSettings(), getSettings()])
-        setBudget(bRes.data?.daily_budget ?? '')
-        setRate(sRes.data?.rate_per_unit ?? '')
+        setGlobalLoading(true);
+        setGlobalError(null);
+        const [budgetRes, configRes] = await Promise.all([
+          getBudgetSettings(),
+          getSettings()
+        ]);
+        setDailyBudget(budgetRes.data.daily_budget);
+        setRatePerUnit(configRes.data.rate_per_unit);
       } catch (err) {
-        setError(err.message || 'Failed to load settings')
+        setGlobalError(err?.response?.data?.error || 'Failed to load data. Check that the backend is running.');
       } finally {
-        setLoading(false)
+        setGlobalLoading(false);
       }
-    }
-    load()
-  }, [])
+    };
+    fetchData();
+  }, []);
 
-  async function handleSave(e) {
-    e.preventDefault()
-    setSaving(true); setError(null)
+  const handleSave = async () => {
     try {
-      await Promise.all([updateBudget(parseFloat(budget)), updateSettings(parseFloat(rate))])
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    } catch (err) {
-      setError(err.message || 'Failed to save settings')
-    } finally {
-      setSaving(false)
-    }
-  }
+      setSaving(true);
+      setSaveError(null);
+      setSaveSuccess(false);
 
-  if (loading) {
+      await Promise.all([
+        updateBudget(Number(dailyBudget)),
+        updateSettings(Number(ratePerUnit))
+      ]);
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setSaveError(err?.response?.data?.error || 'Failed to save settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (globalLoading) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-5">
-        <div className="skeleton h-4 w-28" />
-        <div className="flex flex-col gap-4">
-          {[0, 1].map(i => (
-            <div key={i} className="flex flex-col gap-2">
-              <div className="skeleton h-3 w-24" />
-              <div className="skeleton h-10 w-full rounded-lg" />
-            </div>
-          ))}
-          <div className="skeleton h-10 w-full rounded-lg" />
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1">
+        <div className="flex items-center justify-center h-40">
+          <Loader className="w-5 h-5 text-slate-400 animate-spin" />
         </div>
       </div>
-    )
+    );
   }
 
-  const inputWrap = `flex items-center border border-slate-200 rounded-lg overflow-hidden
-                     focus-within:ring-2 focus-within:ring-slate-300 focus-within:border-slate-300
-                     transition-all duration-150`
-  const inputIcon = `px-3 py-2 bg-slate-50 border-r border-slate-200 text-slate-500`
-  const inputEl   = `flex-1 px-3 py-2 text-sm text-slate-800 outline-none bg-white transition-colors duration-150`
+  if (globalError) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1">
+        <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="text-sm">{globalError}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-5 card-hover animate-fade-in-up"
-      style={{ animationDelay: '60ms' }}>
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1">
+      <h2 className="text-lg font-semibold text-slate-900 mb-4">Budget & Rate Settings</h2>
 
-      <h2 className="font-semibold text-slate-800 text-base">Budget Settings</h2>
-
-      <form onSubmit={handleSave} className="flex flex-col gap-4">
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm text-slate-400">Daily Budget (₹)</label>
-          <div className={inputWrap}>
-            <span className={inputIcon}><IndianRupee size={14} /></span>
+      <div className="flex flex-col gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Daily Budget (&#8377;)</label>
+          <div className="relative">
+            <IndianRupee className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
             <input
-              type="number" step="0.01" min="0" value={budget} required
-              onChange={e => setBudget(e.target.value)}
-              className={inputEl} placeholder="200.00"
+              type="number"
+              value={dailyBudget}
+              onChange={(e) => setDailyBudget(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm text-slate-400">Rate per Unit (₹/kWh)</label>
-          <div className={inputWrap}>
-            <span className={inputIcon}><Zap size={14} /></span>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Rate per kWh (&#8377;)</label>
+          <div className="relative">
+            <Zap className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
             <input
-              type="number" step="0.01" min="0" value={rate} required
-              onChange={e => setRate(e.target.value)}
-              className={inputEl} placeholder="8.00"
+              type="number"
+              value={ratePerUnit}
+              onChange={(e) => setRatePerUnit(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>
         </div>
+      </div>
 
-        {error && (
-          <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 animate-fade-in">
-            <AlertCircle size={14} />
-            <span className="text-sm">{error}</span>
+      <div className="mt-6">
+        {saveSuccess ? (
+          <div className="w-full flex items-center justify-center gap-2 text-green-600 text-sm font-medium h-[38px]">
+            <Check className="w-4 h-4" />
+            <span>Settings saved</span>
           </div>
+        ) : (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full bg-slate-800 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 h-[38px]"
+          >
+            {saving ? (
+              <>
+                <Loader className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Settings'
+            )}
+          </button>
         )}
+      </div>
 
-        <button
-          type="submit" disabled={saving}
-          className="bg-slate-800 text-white rounded-lg px-4 py-2 text-sm font-medium
-                     hover:bg-slate-700 disabled:opacity-60
-                     transition-all duration-200 active:scale-[0.98]
-                     flex items-center justify-center gap-2"
-        >
-          {saving && <Loader size={14} className="animate-spin" />}
-          {saving ? 'Saving…' : 'Save Settings'}
-        </button>
-
-        {saved && (
-          <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg p-3 animate-scale-in">
-            <Check size={14} />
-            <span className="text-sm">Settings saved</span>
-          </div>
-        )}
-      </form>
+      {saveError && (
+        <div className="mt-4 flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="text-sm">{saveError}</span>
+        </div>
+      )}
     </div>
-  )
+  );
 }
