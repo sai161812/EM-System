@@ -47,7 +47,7 @@ export default function History() {
   const filteredData = useMemo(() => {
     return data.filter(item => {
       if (filterSeverity !== 'All' && item.severity !== filterSeverity) return false;
-      if (filterRule !== 'All' && item.rule !== filterRule) return false;
+      if (filterRule !== 'All' && item.rule_triggered !== filterRule) return false;
       
       if (filterDateFrom) {
         const itemDate = new Date(item.timestamp).getTime();
@@ -200,10 +200,10 @@ export default function History() {
                           {formatDate(item.timestamp)}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100">
-                          <span className="font-mono text-xs">{item.rule}</span>
+                          <span className="font-mono text-xs">{item.rule_triggered}</span>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 whitespace-nowrap">
-                          {item.kwh.toFixed(2)} kWh
+                          {item.consumption_kwh.toFixed(2)} kWh
                         </td>
                         <td className="px-4 py-3 text-sm border-b border-slate-100 whitespace-nowrap">
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getSeverityStyles(item.severity)}`}>
