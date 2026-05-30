@@ -1,0 +1,45 @@
+# PYTHON
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.spec
+
+# VENV
+venv/
+.venv/
+env/
+.env/
+
+# ENV
+.env
+.env.*
+!.env.example
+
+# DATABASE
+*.db
+*.sqlite3
+
+# NODE
+node_modules/
+dist/
+.cache/
+*.tsbuildinfo
+
+# Vite
+.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

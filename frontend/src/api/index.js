@@ -1,0 +1,18 @@
+import axios from 'axios'
+
+const api = axios.create({ baseURL: '/api' })
+
+export const getEnergySummary = () => api.get('/energy/summary')
+export const getHourlyData = (date) => api.get(`/energy/hourly?date=${date}`)
+export const getDailyData = (month) => api.get(`/energy/daily?month=${month}`)
+export const getAllAnomalies = () => api.get('/anomalies/')
+export const getRecentAnomalies = (limit = 5) => api.get(`/anomalies/recent?limit=${limit}`)
+export const getInsights = () => api.get('/insights/')
+export const getCostSummary = () => api.get('/cost/summary')
+export const getSettings = () => api.get('/settings')
+export const updateSettings = (rate) => api.post('/settings', { rate_per_unit: rate })
+export const getBudgetStatus = () => api.get('/budget/status')
+export const getBudgetSettings = () => api.get('/budget/settings')
+export const updateBudget = (amount) => api.post('/budget/settings', { daily_budget: amount })
+export const getBudgetAlertHistory = () => api.get('/budget/alerts/history')
+export const refreshSystem = () => api.post('/refresh')
