@@ -17,8 +17,12 @@ export default function EnergyChart() {
         setError(null);
 
         const now = new Date();
-        const apiDate = now.toISOString().split('T')[0];
-        const apiMonth = apiDate.substring(0, 7);
+        // Build today's date in local timezone (not UTC)
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const apiDate = `${yyyy}-${mm}-${dd}`;
+        const apiMonth = `${yyyy}-${mm}`;
 
         let chartData = [];
         let anomalyData = [];
@@ -28,11 +32,15 @@ export default function EnergyChart() {
             getHourlyData(apiDate),
             getAllAnomalies()
           ]);
-          
+
+          // Backend timestamps are 'YYYY-MM-DD HH:MM:SS' — parse safely
           chartData = hourlyRes.data.map(d => ({
             ...d,
             hourLabel: (() => {
-              const hour = parseInt(d.timestamp.split(' ')[1].split(':')[0]);
+              const timePart = d.timestamp.includes('T')
+                ? d.timestamp.split('T')[1]
+                : d.timestamp.split(' ')[1];
+              const hour = parseInt(timePart.split(':')[0]);
               const ampm = hour >= 12 ? 'PM' : 'AM';
               const display = hour % 12 || 12;
               return `${display} ${ampm}`;
@@ -41,10 +49,12 @@ export default function EnergyChart() {
 
           const todayAnomalies = anomalyRes.data.filter(a => a.timestamp.startsWith(apiDate));
           anomalyData = todayAnomalies.map(a => {
-            const dateObj = new Date(a.timestamp);
             return {
               x: (() => {
-                const hour = parseInt(a.timestamp.split(' ')[1].split(':')[0]);
+                const timePart = a.timestamp.includes('T')
+                  ? a.timestamp.split('T')[1]
+                  : a.timestamp.split(' ')[1];
+                const hour = parseInt(timePart.split(':')[0]);
                 const ampm = hour >= 12 ? 'PM' : 'AM';
                 const display = hour % 12 || 12;
                 return `${display} ${ampm}`;
@@ -56,23 +66,30 @@ export default function EnergyChart() {
 
         } else if (activeTab === 'This Week') {
           const res = await getDailyData(apiMonth);
-          const currentDay = now.getDay() === 0 ? 7 : now.getDay(); 
+
+          // currentDay: Mon=1 … Sun=7
+          const currentDay = now.getDay() === 0 ? 7 : now.getDay();
           const currentWeekMonday = new Date(now);
           currentWeekMonday.setDate(now.getDate() - currentDay + 1);
-          
+          // Reset to local midnight so date-only comparisons are accurate
+          currentWeekMonday.setHours(0, 0, 0, 0);
+
           chartData = res.data.filter(d => {
-            const dataDate = new Date(d.date+ 'T00:00:00');
+            // Parse as local date (append T00:00:00 to avoid UTC shift)
+            const dataDate = new Date(d.date + 'T00:00:00');
             return dataDate >= currentWeekMonday && dataDate <= now;
           }).map(d => ({
             ...d,
-            dayLabel: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' })
+            // Use local-timezone parsing for correct weekday label
+            dayLabel: new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })
           }));
 
         } else if (activeTab === 'This Month') {
           const res = await getDailyData(apiMonth);
           chartData = res.data.map(d => ({
             ...d,
-            dayLabel: new Date(d.date).getDate().toString()
+            // Local-timezone parsing to get correct day number
+            dayLabel: new Date(d.date + 'T00:00:00').getDate().toString()
           }));
         }
 
@@ -84,7 +101,13 @@ export default function EnergyChart() {
         setLoading(false);
       }
     };
+
     fetchData();
+
+    // Re-fetch when Refresh System button emits this event
+    const handleRefresh = () => fetchData();
+    window.addEventListener('refresh-system', handleRefresh);
+    return () => window.removeEventListener('refresh-system', handleRefresh);
   }, [activeTab]);
 
   return (
@@ -115,6 +138,13 @@ export default function EnergyChart() {
         <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span className="text-sm">{error}</span>
+        </div>
+      ) : data.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-[300px] text-slate-400">
+          <svg className="w-10 h-10 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span className="text-sm">No data available for this period</span>
         </div>
       ) : (
         <div className="h-[300px]">

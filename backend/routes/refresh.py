@@ -25,7 +25,7 @@ def refresh():
             'message': 'System refreshed successfully.',
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'budget_stage': alert['stage'],
-            'budget_message': alert['message'],
+            'budget_message': alert['message'] or '',
             'anomaly_count': next((i['value'] for i in insights['insights'] if i['type'] == 'ANOMALY_SUMMARY'), 0),
             'insights_generated': len(insights['insights'])
         }), 200

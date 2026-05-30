@@ -80,7 +80,9 @@ export default function History() {
   };
 
   const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
+    // Backend returns 'YYYY-MM-DD HH:MM:SS' — replace space with T for ISO 8601 compatibility
+    const normalized = dateStr.replace(' ', 'T');
+    const d = new Date(normalized);
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 

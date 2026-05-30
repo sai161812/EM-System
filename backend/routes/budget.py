@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from services.budget_engine import (
     evaluate_budget, get_daily_budget,
-    set_daily_budget, store_budget_alert
+    set_daily_budget
 )
 from models import get_db
 from datetime import datetime
@@ -12,7 +12,6 @@ budget_bp = Blueprint('budget', __name__)
 def budget_status():
     date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
     alert = evaluate_budget(date)
-    store_budget_alert(alert)
     return jsonify(alert)
 
 @budget_bp.route('/settings', methods=['GET'])
