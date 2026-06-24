@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { getBudgetStatus } from '../api';
-// LOGIC-05: Import shared utility instead of duplicating it
 import { getStageStyles } from '../utils/stageStyles';
 
 export default function BudgetStatus() {
