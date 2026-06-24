@@ -5,8 +5,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import datetime, timedelta
 from models import get_db
 
-def get_date_range_avg(start_date, end_date):
-    conn = get_db()
+def get_date_range_avg(start_date, end_date, conn=None):
+    _close = conn is None
+    if _close:
+        conn = get_db()
     row = conn.execute('''
         SELECT AVG(daily_total) as avg FROM (
             SELECT SUM(consumption_kwh) as daily_total
@@ -15,24 +17,29 @@ def get_date_range_avg(start_date, end_date):
             GROUP BY DATE(timestamp)
         )
     ''', (start_date, end_date)).fetchone()
-    conn.close()
+    if _close:
+        conn.close()
     return round(row['avg'] or 0, 2)
 
-def get_day_total(date_str):
-    conn = get_db()
+def get_day_total(date_str, conn=None):
+    _close = conn is None
+    if _close:
+        conn = get_db()
     row = conn.execute('''
         SELECT SUM(consumption_kwh) as total
         FROM energy_readings
         WHERE DATE(timestamp) = ?
     ''', (date_str,)).fetchone()
-    conn.close()
+    if _close:
+        conn.close()
     return round(row['total'] or 0, 2)
 
-def get_worst_day_this_week(today_str):
+def get_worst_day_this_week(today_str, conn=None):
     today = datetime.strptime(today_str, '%Y-%m-%d')
     week_start = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
-
-    conn = get_db()
+    _close = conn is None
+    if _close:
+        conn = get_db()
     row = conn.execute('''
         SELECT DATE(timestamp) as date, SUM(consumption_kwh) as total
         FROM energy_readings
@@ -41,14 +48,16 @@ def get_worst_day_this_week(today_str):
         ORDER BY total DESC
         LIMIT 1
     ''', (week_start, today_str)).fetchone()
-    conn.close()
+    if _close:
+        conn.close()
     return dict(row) if row else None
 
-def get_best_day_this_week(today_str):
+def get_best_day_this_week(today_str, conn=None):
     today = datetime.strptime(today_str, '%Y-%m-%d')
     week_start = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
-
-    conn = get_db()
+    _close = conn is None
+    if _close:
+        conn = get_db()
     row = conn.execute('''
         SELECT DATE(timestamp) as date, SUM(consumption_kwh) as total
         FROM energy_readings
@@ -57,11 +66,14 @@ def get_best_day_this_week(today_str):
         ORDER BY total ASC
         LIMIT 1
     ''', (week_start, today_str)).fetchone()
-    conn.close()
+    if _close:
+        conn.close()
     return dict(row) if row else None
 
-def get_peak_hour_today(date_str):
-    conn = get_db()
+def get_peak_hour_today(date_str, conn=None):
+    _close = conn is None
+    if _close:
+        conn = get_db()
     row = conn.execute('''
         SELECT timestamp, consumption_kwh
         FROM energy_readings
@@ -69,7 +81,8 @@ def get_peak_hour_today(date_str):
         ORDER BY consumption_kwh DESC
         LIMIT 1
     ''', (date_str,)).fetchone()
-    conn.close()
+    if _close:
+        conn.close()
     if not row:
         return None
     dt = datetime.strptime(row['timestamp'], '%Y-%m-%d %H:%M:%S')
@@ -78,13 +91,16 @@ def get_peak_hour_today(date_str):
         'consumption_kwh': round(row['consumption_kwh'], 2)
     }
 
-def get_anomaly_count(date_str):
-    conn = get_db()
+def get_anomaly_count(date_str, conn=None):
+    _close = conn is None
+    if _close:
+        conn = get_db()
     row = conn.execute('''
         SELECT COUNT(*) as count FROM anomalies
         WHERE DATE(timestamp) = ?
     ''', (date_str,)).fetchone()
-    conn.close()
+    if _close:
+        conn.close()
     return row['count'] if row else 0
 
 def generate_insights(date_str=None):
@@ -95,17 +111,23 @@ def generate_insights(date_str=None):
     yesterday_str = (today - timedelta(days=1)).strftime('%Y-%m-%d')
     seven_days_ago = (today - timedelta(days=7)).strftime('%Y-%m-%d')
 
-    today_total = get_day_total(date_str)
-    yesterday_total = get_day_total(yesterday_str)
-    seven_day_avg = get_date_range_avg(seven_days_ago, yesterday_str)
-    thirty_day_avg = get_date_range_avg(
-        (today - timedelta(days=30)).strftime('%Y-%m-%d'),
-        yesterday_str
-    )
-    worst_day = get_worst_day_this_week(date_str)
-    best_day = get_best_day_this_week(date_str)
-    peak_hour = get_peak_hour_today(date_str)
-    anomaly_count = get_anomaly_count(date_str)
+    # LOGIC-08: Use a single connection for all helper calls
+    conn = get_db()
+    try:
+        today_total = get_day_total(date_str, conn)
+        yesterday_total = get_day_total(yesterday_str, conn)
+        seven_day_avg = get_date_range_avg(seven_days_ago, yesterday_str, conn)
+        thirty_day_avg = get_date_range_avg(
+            (today - timedelta(days=30)).strftime('%Y-%m-%d'),
+            yesterday_str,
+            conn
+        )
+        worst_day = get_worst_day_this_week(date_str, conn)
+        best_day = get_best_day_this_week(date_str, conn)
+        peak_hour = get_peak_hour_today(date_str, conn)
+        anomaly_count = get_anomaly_count(date_str, conn)
+    finally:
+        conn.close()
 
     insights = []
 

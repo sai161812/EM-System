@@ -59,6 +59,7 @@ export default function Sidebar() {
         <button
           onClick={handleRefresh}
           disabled={refreshState === 'loading'}
+          title={refreshState === 'error' ? 'Refresh failed. Check backend connection.' : 'Refresh all system data'}
           className="w-full border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {refreshState === 'loading' && <Loader className="w-4 h-4 animate-spin" />}
@@ -67,6 +68,10 @@ export default function Sidebar() {
           {refreshState === 'idle' && <RefreshCw className="w-4 h-4" />}
           Refresh System
         </button>
+        {/* EDGE-10: Show a visible error message on refresh failure */}
+        {refreshState === 'error' && (
+          <p className="text-xs text-red-500 text-center mt-2">Refresh failed. Check backend connection.</p>
+        )}
       </div>
     </div>
   );

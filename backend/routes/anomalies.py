@@ -14,10 +14,15 @@ def get_all():
 
 @anomalies_bp.route('/recent', methods=['GET'])
 def get_recent():
-    limit = request.args.get('limit', 5)
+    try:
+        limit = int(request.args.get('limit', 5))
+        if limit < 1 or limit > 500:
+            return jsonify({'error': 'limit must be between 1 and 500'}), 400
+    except (ValueError, TypeError):
+        return jsonify({'error': 'limit must be an integer'}), 400
     conn = get_db()
     rows = conn.execute('''
         SELECT * FROM anomalies ORDER BY timestamp DESC LIMIT ?
-    ''', (int(limit),)).fetchall()
+    ''', (limit,)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
